@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <link
+      rel="stylesheet"
+      href="../../font-awesome-4.7.0/css/font-awesome.min.css"
+    />
+    <style>
+      .overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 1000;
+        -webkit-user-drag: none;
+        -khtml-user-drag: none;
+        -moz-user-drag: none;
+        -o-user-drag: none;
+        user-drag: none;
+        pointer-events: none;
+      }
+      button {
+        background-color: #fff;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="row">
+      <button class="fa fa-pencil" id="pencil" type="button"></button>
+      <button class="fa fa-eraser" id="erase" type="button"></button>
+      <img
+        class="overlay"
+        src="trail-remote-img-fr.png"
+        style="height: 300px; width: 350px; margin-top: 10%; margin-left: 30%"
+      />
+      <div class="col-8">
+        <canvas
+          id="c"
+          height="470"
+          width="800"
+          style="border: 1px solid #aaa; margin-left: 15%"
+        ></canvas>
+      </div>
+    </div>
+  </body>
+  <script src="fabric.min.js"></script>
+  <script>
+    (function () {
+      var canvas = (this.__canvas = new fabric.Canvas("c", {
+        isDrawingMode: true,
+        preserveObjectStacking: true,
+      }));
+      var drawingMode = "pencil";
+      onClickPencilIcon();
+      console.log("drawing mode", drawingMode);
+      document.getElementById("pencil").onclick = function (event) {
+        console.log("in add mode");
+        onClickPencilIcon();
+      };
+      document.getElementById("erase").onclick = function (event) {
+        console.log("in delete mode", event);
+        if (drawingMode === "pencil") {
+          canvas.freeDrawingBrush = new fabric.EraserBrush(canvas);
+          canvas.freeDrawingBrush.width = 5;
+          canvas.defaultCursor = "pointer";
+          drawingMode = "erase";
+          event.target.style.backgroundColor = "#b6e7e7";
+        } else {
+          onClickPencilIcon();
+        }
+      };
+      function onClickPencilIcon() {
+        canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+        canvas.freeDrawingBrush.width = 3;
+        drawingMode = "pencil";
+        var erasor = document.getElementById("erase");
+        erasor.style.backgroundColor = "#fff";
+      }
+    })();
+  </script>
+</html>

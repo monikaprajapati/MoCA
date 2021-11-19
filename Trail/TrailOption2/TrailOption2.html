@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        #canvas {
+            border: 1px solid #aaa;
+            /* margin-left: 30%; */
+        }
+    </style>
+</head>
+
+<body>
+
+    <canvas id="canvas" width="1024" height="600"></canvas>
+    <script src="fabric.min.js"></script>
+    <script>
+        var canvas = new fabric.Canvas('canvas');
+        var prevPositionX, prevPositionY, count = 0, isDown;
+        const layers = {
+            BOTTOM: 0,
+            TOP: 1,
+        };
+        canvas.selection = false;
+        function addImage(url, layer) {
+            fabric.Image.fromURL(url, function (img) {
+                img.set({ customLayer: layer, selectable: false })
+                img.scaleToWidth(400);
+                img.top = 100;
+                img.left = 200;
+                canvas.insertAt(img, 0);
+            });
+        }
+        addImage('./trail-remote-img-fr.png', layers.BOTTOM);
+        canvas.on('mouse:down', function (o) {
+            isDown = true;
+            console.log("onmousedown object", o);
+            if (count == 0) {
+                prevPositionX = 0;
+                prevPositionY = 0;
+            }
+            var pointer = canvas.getPointer(o.e);
+            var points = [pointer.x, pointer.y, pointer.x, pointer.y];
+            var positionX = pointer.x, positionY = pointer.y;
+            line = new fabric.Line(points, {
+                strokeWidth: 3,
+                fill: 'black',
+                stroke: 'black',
+                originX: 'center',
+                originY: 'center',
+                selectable: false,
+            });
+            //Checking whether to draw line or not and stop
+            if ((positionX > prevPositionX - 34 && positionX < prevPositionX + 34) && (positionY > prevPositionY - 34 && positionY < prevPositionY + 34)) {
+                console.log("stopped");
+            }
+            else {
+                console.log("line added");
+                canvas.add(line);
+                canvas.sendToBack(line);
+            }
+
+            // Store the points to draw the lines
+            prevPositionX = positionX;
+            prevPositionY = positionY;
+            console.log("prevPositionX", prevPositionX);
+            console.log("prevPositionY", prevPositionY);
+            count++;
+        });
+        canvas.on('mouse:move', function (o) {
+            console.log("mouse move object");
+            if (!isDown) return;
+            var pointer = canvas.getPointer(o.e);
+            line.set({ x2: pointer.x, y2: pointer.y });
+            canvas.renderAll();
+        })
+    </script>
+</body>
+
+</html>
