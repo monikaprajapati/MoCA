@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Document</title>
+  <style>
+    #canvas {
+      border: 1px solid #aaa;
+      /* margin-left: 30%; */
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="canvas" width="1024" height="600"></canvas>
+  <script src="fabric.min.js"></script>
+  <script>
+    var canvas = new fabric.Canvas("canvas");
+    var _prevActive = 0;
+    var _layer = 0;
+    console.log("canavas", canvas);
+    fabric.util.addListener(canvas.upperCanvasEl, "dblclick", function (e) {
+      var _canvas = canvas;
+      console.log("canvas after double click", _canvas);
+      //current mouse position
+      var _mouse = _canvas.getPointer(e);
+      console.log("_mouse after double click", _mouse);
+
+      //possible dblclick targets (objects that share mousepointer)
+      var _targets = _canvas.getObjects().filter(function (_obj) {
+        return _obj.containsPoint(_mouse);
+      });
+      console.log("targets at 0 index", _targets[0]);
+      if (_targets[0]._element && _targets[0]._element.className == 'canvas-img') {
+        console.log("Clicked on image------------------");
+      }
+      else {
+        var _active = _canvas.getActiveObject();
+        console.log("_active after double click", _active);
+
+        _canvas.discardActiveObject();
+
+        //new top layer target
+        if (_prevActive !== _active) {
+          //try to go one layer below current target
+          _layer = Math.max(_targets.length - 2, 0);
+        }
+        //top layer target is same as before
+        else {
+          //try to go one more layer down
+          _layer = --_layer < 0 ? Math.max(_targets.length - 2, 0) : _layer;
+        }
+
+        //get obj on current layer
+        var _obj = _targets[_layer];
+
+        if (_obj) {
+          _prevActive = _obj;
+          _obj.bringToFront();
+          console.log("after Bringing to front ============");
+          _canvas.setActiveObject(_obj);
+          fabric.Object.prototype.controls.customMove = new fabric.Control({
+            x: 0.5,
+            y: -0.5,
+            offsetY: 80,
+            offsetX: -20,
+            cursorStyle: "pointer",
+            mouseUpHandler: deleteObject,
+            render: renderIcon(deleteImg),
+            cornerSize: 24,
+          });
+          _canvas.renderAll();
+        }
+      }
+      console.log("_targets after double click", _targets);
+      //active object (that has been selected on click)
+
+    });
+    var deleteIcon =
+      "data:image/svg+xml,%3C%3Fxml version='1.0' encoding='utf-8'%3F%3E%3C!DOCTYPE svg PUBLIC '-//W3C//DTD SVG 1.1//EN' 'http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd'%3E%3Csvg version='1.1' id='Ebene_1' xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' x='0px' y='0px' width='595.275px' height='595.275px' viewBox='200 215 230 470' xml:space='preserve'%3E%3Ccircle style='fill:%23F44336;' cx='299.76' cy='439.067' r='218.516'/%3E%3Cg%3E%3Crect x='267.162' y='307.978' transform='matrix(0.7071 -0.7071 0.7071 0.7071 -222.6202 340.6915)' style='fill:white;' width='65.545' height='262.18'/%3E%3Crect x='266.988' y='308.153' transform='matrix(0.7071 0.7071 -0.7071 0.7071 398.3889 -83.3116)' style='fill:white;' width='65.544' height='262.179'/%3E%3C/g%3E%3C/svg%3E";
+    var deleteImg = document.createElement("img");
+    deleteImg.src = deleteIcon;
+    var isDown,
+      countNodeDownEvent = 0;
+    canvas.selection = true;
+
+    function renderIcon(icon) {
+      console.log("rendered icon", icon);
+      return function renderIcon(
+        ctx,
+        left,
+        top,
+        styleOverride,
+        fabricObject
+      ) {
+        console.log("context", ctx, "fabric object", fabricObject);
+        var size = this.cornerSize;
+        ctx.save();
+        ctx.translate(left, top);
+        ctx.rotate(fabric.util.degreesToRadians(fabricObject.angle));
+        console.log("size", size);
+        ctx.drawImage(icon, -size / 2, -size / 2, size, size);
+        // ctx.drawImage(icon,-size/2,-size/2,size,size, -size/2, -size/2 , size, size);
+        ctx.restore();
+      };
+    }
+    function deleteObject(eventData, transform) {
+      console.log("object deleted");
+      var target = transform.target;
+      var canvas = target.canvas;
+      canvas.remove(target);
+      canvas.requestRenderAll();
+    }
+    function addImage(url) {
+      fabric.Image.fromURL(url, function (img) {
+        img.set({ selectable: false });
+        img.scaleToWidth(400);
+        img.top = 100;
+        img.left = 200;
+        canvas.insertAt(img, 0);
+        console.log("image object", img);
+      });
+
+    }
+    addImage("./trail-remote-img-fr.png");
+    canvas.on("mouse:down", function (o) {
+      isDown = true;
+      console.log("onmousedown object", o);
+      countNodeDownEvent++;
+      var pointer = canvas.getPointer(o.e);
+      var points = [pointer.x, pointer.y, pointer.x, pointer.y];
+      var positionX = pointer.x,
+        positionY = pointer.y;
+      console.log("points of line ----->>>>> ", points);
+      line = new fabric.Line(points, {
+        strokeWidth: 3,
+        fill: "black",
+        stroke: "black",
+        originX: "center",
+        originY: "center",
+        selectable: true,
+        globalCompositeOperation: "xor",
+        perPixelTargetFind: true
+      });
+
+      //Checking whether to draw line or not and stop
+      console.log("countNodeDownEvent", countNodeDownEvent);
+      if (countNodeDownEvent == 2) {
+        countNodeDownEvent = 0;
+        console.log("stopped");
+        canvas.discardActiveObject().renderAll();
+      } else {
+        console.log("line added");
+        if (!canvas.getActiveObject()) {
+          canvas.add(line);
+          canvas.sendToBack(line);
+        } else {
+          console.log("else of line added &&&&&&&&&&&&&&&&&");
+        }
+      }
+    });
+    canvas.on("mouse:up", function (o) {
+      console.log("mouse up  ************ ", countNodeDownEvent);
+
+    });
+    canvas.on("mouse:move", function (o) {
+      // console.log("mouse move object");
+      if (!isDown) return;
+      var pointer = canvas.getPointer(o.e);
+      line.set({ x2: pointer.x, y2: pointer.y });
+      canvas.renderAll();
+    });
+    canvas.on("mouse:over", function (o) {
+    });
+    canvas.on("selection:created", function (o) {
+      console.log("line selected");
+
+    });
+    canvas.on("selection:updated", function (o) {
+      console.log("line updated -------------------------", o.target);
+
+
+      // canvas.bringToFront(o.target);
+    });
+    canvas.on("object:selected", function (e) {
+      console.log("object selected");
+      if (e.target) {
+        e.target.bringToFront();
+        this.renderAll();
+      }
+    });
+
+  </script>
+</body>
+
+</html>
