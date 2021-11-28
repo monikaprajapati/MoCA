@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <style>
+    #c {
+      padding: 0;
+      margin-left: auto;
+      margin-right: auto;
+      display: block;
+      border-radius: 10px;
+      border: 3px black solid;
+    }
+
+    .canvas-container {
+      margin-left: auto;
+      margin-right: auto;
+    }
+  </style>
+</head>
+
+<body>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+
+  <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/2.4.6/fabric.min.js"></script> -->
+  <canvas id="c" width="600" height="600"></canvas>
+</body>
+<script src="./fabric.min.js"></script>
+<script>
+  var canvas = new fabric.Canvas('c');
+  canvas.selection = true;
+  var isDown, count = 0;
+  var point1;
+  var line = null;
+  var drawMode = true;
+  var sourceNode, destinationNode;
+
+  var deleteIcon =
+    "data:image/svg+xml,%3C%3Fxml version='1.0' encoding='utf-8'%3F%3E%3C!DOCTYPE svg PUBLIC '-//W3C//DTD SVG 1.1//EN' 'http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd'%3E%3Csvg version='1.1' id='Ebene_1' xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' x='0px' y='0px' width='595.275px' height='595.275px' viewBox='200 215 230 470' xml:space='preserve'%3E%3Ccircle style='fill:%23F44336;' cx='299.76' cy='439.067' r='218.516'/%3E%3Cg%3E%3Crect x='267.162' y='307.978' transform='matrix(0.7071 -0.7071 0.7071 0.7071 -222.6202 340.6915)' style='fill:white;' width='65.545' height='262.18'/%3E%3Crect x='266.988' y='308.153' transform='matrix(0.7071 0.7071 -0.7071 0.7071 398.3889 -83.3116)' style='fill:white;' width='65.544' height='262.179'/%3E%3C/g%3E%3C/svg%3E";
+  var deleteImg = document.createElement("img");
+  deleteImg.src = deleteIcon;
+
+  // Node set on canvas
+  putNodeOnCanvas();
+  draw();
+
+  function onMouseDown(options) {
+      console.log("mouse down", drawMode, options);
+      isDown = true;
+      count++;
+      var pointer = canvas.getPointer(options.e);
+      var points = [pointer.x, pointer.y, pointer.x, pointer.y];
+      line = new fabric.Line(points, {
+        stroke: 'black',
+        hasControls: true,
+        hasBorders: false,
+        lockMovementX: false,
+        lockMovementY: false,
+        hoverCursor: 'default',
+        selectable: false,
+        perPixelFindTarget: true,
+      });
+      canvas.add(line);
+      canvas.sendToBack(line);
+      canvas.renderAll();
+      
+      if(count == 1) {
+        sourceNode = destinationNode = options.target;
+      } else {
+        sourceNode = destinationNode;
+        destinationNode = options.target;
+      }
+
+      if (options.target && options.target.type == "image") {
+        destinationNode.backgroundColor = "#a9c8f6";
+        sourceNode.backgroundColor = "#a9c8f6";
+        console.log("setting target to purple color");
+      }
+
+      setTimeout(function(){
+        console.log("Hello", sourceNode, destinationNode);
+        sourceNode.backgroundColor = "hsl(0, 0%, 0%, 0)";
+        destinationNode.backgroundColor = "hsl(0, 0%, 0%, 0)";
+        canvas.renderAll();
+      }, 500);
+  };
+
+  function onDblClick(o) {
+    console.log('@@@@@@  Double click  @@@@@', line, o);
+    line.setCoords();
+    isDown = false;
+    line = null;
+    edit();
+    canvas.forEachObject(function (object) {
+      console.log(object.type);
+      if(object.type == "image") {
+        object.backgroundColor = "hsl(0, 0%, 0%, 0)";
+      }
+    })
+    canvas.renderAll();
+  };
+
+  function onMouseOver(o) {
+    // console.log("mouse over &&&& ", o.target);
+    if (o.target && (!drawMode) && o.target.type == "line") {
+      // o.target.hasControls = true;
+      // o.target.selectable = o.target.hasBorders = true;
+      // canvas.renderAll();
+      canvas.setActiveObject(o.target)
+
+      fabric.Object.prototype.controls.customMove = new fabric.Control({
+        cursorStyle: "pointer",
+        mouseUpHandler: deleteObject,
+        render: renderIcon(deleteImg),
+        cornerSize: 24,
+      });
+      canvas.renderAll();
+    }
+  };
+
+  function onMouseMove(o) {
+    if (!isDown) return;
+    var pointer = canvas.getPointer(o.e);
+    line.set({
+      x2: pointer.x,
+      y2: pointer.y
+    });
+    canvas.requestRenderAll();
+  }; //end mouse:move
+
+  function draw() {
+    drawMode = true;
+    addListener()
+    setSelectable(false);
+    console.log("!!!!!!!!!   drawing mode  !!!!!!! ",drawMode);
+  }
+
+  function edit() {
+    console.log("******* Edit mode started ********* ", drawMode);
+    drawMode = false;
+    setSelectable(true);
+    console.log("editing mode",drawMode);
+  }
+
+  //function to show remove icon
+  function renderIcon(icon) {
+    // console.log("rendered icon");
+    return function renderIcon(
+      ctx,
+      left,
+      top,
+      styleOverride,
+      fabricObject
+    ) {
+      var size = this.cornerSize;
+      ctx.save();
+      ctx.translate(left, top);
+      ctx.rotate(fabric.util.degreesToRadians(fabricObject.angle));
+      ctx.drawImage(icon, -size / 2, -size / 2, size, size);
+      ctx.restore();
+    };
+  }
+  //function to delete object
+  function deleteObject(eventData, transform) {
+    console.log("object deleted");
+    var target = transform.target;
+    var canvas = target.canvas;
+    canvas.remove(target);
+    addListener();
+    isDown = false;
+    drawMode = false;
+    setSelectable(true);
+    canvas.requestRenderAll();
+  }
+  // addListener();
+  function addListener() {
+    canvas.on('mouse:down', onMouseDown);
+    canvas.on('mouse:dblclick', onDblClick);
+    canvas.on('mouse:move', onMouseMove);
+    canvas.on('mouse:over', onMouseOver);
+  }
+
+  function setSelectable(value) {
+    canvas.forEachObject(function (object) {
+      console.log(object.type);
+      if(object.type == "line") {
+        object.selectable = value;
+        object.setCoords()
+      }
+    })
+    canvas.renderAll();
+  }
+
+  function putNodeOnCanvas() {
+    setImage("./1.png", 200, 110);
+    setImage("./2.png", 150, 410);
+    setImage("./3.png", 350, 410);
+    setImage("./4.png", 290, 230);
+    setImage("./5.png", 100, 20);
+    setImage("./A.png", 10, 310);
+    setImage("./B.png", 150, 260);
+    setImage("./C.png", 420, 110);
+    setImage("./D.png", 300, 30);
+    setImage("./E.png", 10, 110);
+  }
+  
+  function setImage(url, top, left) {
+    fabric.Image.fromURL(url, function (img) {
+      img.set({ selectable: false });
+      img.scaleToWidth(50);
+      img.top = top;
+      img.left = left;
+      canvas.insertAt(img, 0);
+    });
+  }
+</script>
+
+</html>
